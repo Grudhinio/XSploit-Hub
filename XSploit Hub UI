@@ -1,3 +1,5 @@
+--key D5AE293D5DBD4898B178B83E2D116
+
 local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
 
 local Window = Rayfield:CreateWindow({
@@ -34,7 +36,7 @@ local Window = Rayfield:CreateWindow({
    }
 })
 
-local MainTab = Window:CreateTab("🏠 Home", nil) -- Title, Image
+local MainTab = Window:CreateTab("🕹️ Player", nil) -- Title, Image
 local MainSection = MainTab:CreateSection("Main")
 
 Rayfield:Notify({
@@ -82,6 +84,93 @@ end
    end,
 })
 
+local flying = false
+local UIS = game:GetService("UserInputService")
+local Player = game.Players.LocalPlayer
+local Character = Player.Character or Player.CharacterAdded:Wait()
+local HumanoidRootPart = Character:WaitForChild("HumanoidRootPart")
+
+-- Declare outside, but create them inside the function
+local BodyGyro
+local BodyVelocity
+
+local function startFlying()
+    flying = true
+
+    -- Recreate fresh instances every time
+    BodyGyro = Instance.new("BodyGyro")
+    BodyVelocity = Instance.new("BodyVelocity")
+
+    BodyGyro.P = 9e4
+    BodyGyro.MaxTorque = Vector3.new(9e9, 9e9, 9e9)
+    BodyGyro.CFrame = HumanoidRootPart.CFrame
+    BodyGyro.Parent = HumanoidRootPart
+
+    BodyVelocity.Velocity = Vector3.zero
+    BodyVelocity.MaxForce = Vector3.new(9e9, 9e9, 9e9)
+    BodyVelocity.Parent = HumanoidRootPart
+
+    local speed = 50
+
+    spawn(function()
+        while flying do
+            local cam = workspace.CurrentCamera
+            local moveDir = Vector3.zero
+
+            if UIS:IsKeyDown(Enum.KeyCode.W) then
+                moveDir = moveDir + cam.CFrame.LookVector
+            end
+            if UIS:IsKeyDown(Enum.KeyCode.S) then
+                moveDir = moveDir - cam.CFrame.LookVector
+            end
+            if UIS:IsKeyDown(Enum.KeyCode.A) then
+                moveDir = moveDir - cam.CFrame.RightVector
+            end
+            if UIS:IsKeyDown(Enum.KeyCode.D) then
+                moveDir = moveDir + cam.CFrame.RightVector
+            end
+
+            if moveDir.Magnitude > 0 then
+                BodyVelocity.Velocity = moveDir.Unit * speed
+            else
+                BodyVelocity.Velocity = Vector3.zero
+            end
+
+            BodyGyro.CFrame = cam.CFrame
+            task.wait()
+        end
+    end)
+end
+
+local function stopFlying()
+    flying = false
+    if BodyGyro then BodyGyro:Destroy() end
+    if BodyVelocity then BodyVelocity:Destroy() end
+end
+
+MainTab:CreateButton({
+    Name = "Toggle Fly (WASD)",
+    Callback = function()
+        if flying then
+            stopFlying()
+            Rayfield:Notify({
+                Title = "Fly Disabled",
+                Content = "Flying mode has been turned off.",
+                Duration = 3,
+            })
+        else
+            startFlying()
+            Rayfield:Notify({
+                Title = "Fly Enabled",
+                Content = "Use W/A/S/D to fly!",
+                Duration = 4,
+            })
+        end
+    end
+})
+
+
+
 
 local Slider = MainTab:CreateSlider({
    Name = "WalkSpeed Slider",
@@ -116,6 +205,10 @@ local Input = MainTab:CreateInput({
    end,
 })
 
+
+
+local TPTab = Window:CreateTab("🏝 Teleports (NO WORKING)", nil) -- Title, Image
+
 local Input = MainTab:CreateInput({
    Name = "Jump Power",
    PlaceholderText = "1-500",
@@ -125,7 +218,37 @@ local Input = MainTab:CreateInput({
    end,
 })
 
-local TPTab = Window:CreateTab("🏝 Teleports (NO WORKING)", nil) -- Title, Image
+local Input = TPTab:CreateInput({
+   Name = "Teleport To Player",
+   PlaceholderText = "Player Name",
+   RemoveTextAfterFocusLost = true,
+   Callback = function(playerName)
+       local targetPlayer = game.Players:FindFirstChild(playerName)
+       local localPlayer = game.Players.LocalPlayer
+
+       if targetPlayer and targetPlayer.Character and targetPlayer.Character:FindFirstChild("HumanoidRootPart") then
+           local hrp = targetPlayer.Character.HumanoidRootPart
+           local myChar = localPlayer.Character or localPlayer.CharacterAdded:Wait()
+           local myHRP = myChar:FindFirstChild("HumanoidRootPart")
+
+           if myHRP then
+               myHRP.CFrame = hrp.CFrame + Vector3.new(0, 5, 0) -- Teleport slightly above
+               Rayfield:Notify({
+                   Title = "Teleported!",
+                   Content = "You were teleported to " .. playerName,
+                   Duration = 3,
+               })
+           end
+       else
+           Rayfield:Notify({
+               Title = "Teleport Failed",
+               Content = "Player not found or not loaded.",
+               Duration = 3,
+           })
+       end
+   end,
+})
+
 
 local Button1 = TPTab:CreateButton({
    Name = "Starter Island",
